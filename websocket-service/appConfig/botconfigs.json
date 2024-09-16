@@ -1,0 +1,4 @@
+[
+    { "symbol": "BTC_USDT", "source": "binance"},
+    { "symbol": "AAVE_USDT", "source": "binance"}
+]

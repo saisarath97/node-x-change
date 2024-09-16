@@ -1,0 +1,30 @@
+# # docker-compose.yml
+# version: '3.1'
+
+# services:
+#   websocket:
+#     build: ./websocket-service
+#     ports:
+#       - "3001:3001" # server port
+#       - "3002:3002" # websocket port
+
+version: '3.1'
+
+services:
+  websocket:
+    build: ./websocket-service
+    ports:
+      - "3001:3001"
+      - "3002:3002"
+    depends_on:
+      - redis
+
+  redis:
+    image: redis:latest
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+
+volumes:
+  redis-data:
