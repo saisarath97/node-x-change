@@ -153,46 +153,142 @@ const server = http.createServer(app);
 createWebSocketServer(server, websocketPort);
 
 // Handle data storage and broadcasting
-// const handleData = async (data, symbol, streamType) => {
-//   try {
-//     var jsonData = JSON.stringify(data);
-//     await redisClient.set(`${symbol}_${streamType}`, jsonData);
-//     console.log(`Stored data in Redis for ${symbol} for (${streamType})`);
-//   } catch (err) {
-//     console.error('Redis set error:', err);
-//   }
-
-//   broadcastData(symbol, streamType, data); // Call the broadcast function from webSocketHandler.js
-// };
-
 const handleData = async (data, symbol, streamType) => {
   try {
-    const redisKey = `${symbol}_${streamType}`;
-    const jsonData = JSON.stringify(data);
+    var jsonData = JSON.stringify(data);
 
-    if (streamType === 'depth' || streamType === 'deals') {
-      // Append the data to a list to accumulate data over time
-      await redisClient.lPush(redisKey, jsonData);
-      console.log(`Appended data to Redis list for ${symbol} (${streamType})`);
-      // Trim the list to the latest 100 entries
-      await redisClient.lTrim(redisKey, 0, 99);
-      console.log(`Trimmed list for ${symbol} (${streamType}) to keep only the last 100 entries`);
-
-    } else if (streamType.includes('kline')) {
-      await redisClient.lPush(redisKey, jsonData);
-
-    } else if (streamType === '24hrTicker') {
-      // For ticker, just set the latest value (overwrite)
-      await redisClient.set(redisKey, jsonData);
-      console.log(`Stored latest data in Redis for ${symbol} (${streamType})`);
+    if(streamType.includes('depth')){
+      handleOrderBookData(data);
+    } else if(streamType.includes('deals')){
+      handleMarketHistoryData(data);
+    } else if(streamType.includes('kline')) {
+      handleKlineData(data);
     }
-
+    await redisClient.set(`${symbol}_${streamType}`, jsonData);
+    console.log(`Stored data in Redis for ${symbol} for (${streamType})`);
   } catch (err) {
-    console.error('Redis error:', err);
+    console.error('Redis set error:', err);
   }
 
-  // Broadcast the data to WebSocket clients
-  broadcastData(symbol, streamType, data);
+  broadcastData(symbol, streamType, data); // Call the broadcast function from webSocketHandler.js
+};
+
+const handleOrderBookData = async (data) => {
+  try {
+    // Construct the Redis key
+    const key = `${data.symbol}_${data.type}`;
+
+    // Retrieve the existing data from Redis
+    const existingData = await redisClient.get(key);
+
+    // Initialize the orderBook object
+    let orderBook = {
+      data: {
+        bids: [],
+        asks: []
+      }
+    };
+
+    // If existing data exists, parse it
+    if (existingData) {
+      orderBook = JSON.parse(existingData);
+    }
+
+    // Merge the new bids and asks with the existing ones
+    const newBids = data.data.bids;
+    const newAsks = data.data.asks;
+
+    // Append new bids and asks to the existing ones
+    orderBook.data.bids = [...orderBook.data.bids, ...newBids];
+    orderBook.data.asks = [...orderBook.data.asks, ...newAsks];
+
+    // Limit the bids and asks to 100 items
+    const maxEntries = 100;
+    orderBook.data.bids = orderBook.data.bids.slice(-maxEntries); // Keep only the last 100 bids
+    orderBook.data.asks = orderBook.data.asks.slice(-maxEntries); // Keep only the last 100 asks
+
+    // Convert the updated order book to JSON and store it back in Redis
+    const jsonData = JSON.stringify(orderBook);
+    await redisClient.set(key, jsonData);
+
+    console.log(`Updated order book for ${data.symbol} (${data.type}) stored in Redis`);
+  } catch (err) {
+    console.error("Error in storing order book to Redis:", err.message);
+  }
+};
+
+const handleMarketHistoryData = async (data) => {
+  try {
+    // Construct the Redis key
+    const key = `${data.symbol}_${data.type}`;
+
+    // Retrieve the existing data from Redis
+    const existingData = await redisClient.get(key);
+
+    // Initialize the market history object
+    let marketHistory = {
+      data: []
+    };
+
+    // If existing data exists, parse it
+    if (existingData) {
+      marketHistory = JSON.parse(existingData);
+    }
+
+    // Add the new data to the existing array
+    marketHistory.data.push(data.data);
+
+    // Limit the data array to 100 items
+    const maxEntries = 100;
+    marketHistory.data = marketHistory.data.slice(-maxEntries); // Keep only the last 100 entries
+
+    // Convert the updated market history to JSON and store it back in Redis
+    const jsonData = JSON.stringify(marketHistory);
+    await redisClient.set(key, jsonData);
+
+    console.log(`Updated market history for ${data.symbol} (${data.type}) stored in Redis with max 100 entries`);
+  } catch (err) {
+    console.error("Error in storing market history to Redis:", err.message);
+  }
+};
+
+const handleKlineData = async (data) => {
+  try {
+    // Construct the Redis key for kline data
+    const key = `${data.symbol}_${data.type}`;
+
+    // Retrieve the existing kline data from Redis
+    const existingData = await redisClient.get(key);
+
+    // Initialize the kline history object
+    let klineHistory = {
+      data: []
+    };
+
+    // If existing data exists, parse it
+    if (existingData) {
+      klineHistory = JSON.parse(existingData);
+            // Ensure 'data' is an array, even if existing data was malformed
+            if (!Array.isArray(klineHistory.data)) {
+              klineHistory.data = [];
+            }
+    }
+
+    // Add the new kline data to the array
+    klineHistory.data.push(data.data);
+
+    // Limit the kline array to 100 entries
+    const maxEntries = 200;
+    klineHistory.data = klineHistory.data.slice(-maxEntries); // Keep only the last 100 kline entries
+
+    // Convert the updated kline history to JSON and store it back in Redis
+    const jsonData = JSON.stringify(klineHistory);
+    await redisClient.set(key, jsonData);
+
+    console.log(`Updated kline data for ${data.symbol} (${data.type}) stored in Redis with max 100 entries`);
+  } catch (err) {
+    console.error("Error in storing kline data to Redis:", err.message);
+  }
 };
 
 
