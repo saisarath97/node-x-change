@@ -56,20 +56,48 @@ const handleSubscribe = async (ws, data) => {
   }
 };
 
+// // Send the initial 100 asks and bids for orderbook data
+// const sendInitialData = async (ws, symbol, channel) => {
+//   try {
+//     const redisKey = `${symbol}_${channel}`;
+//     const redisData = await redisClient.get(redisKey);
+
+//     if (redisData) {
+//       const parsedData = JSON.parse(redisData);
+//       console.log("redis data ", parsedData)
+
+//       ws.send(JSON.stringify({
+//         symbol:parsedData.symbol,
+//         data:parsedData.data,
+//         type: parsedData.type
+//       }));
+
+//       console.log(`Sent initial 100 asks and bids for ${symbol} (${channel})`);
+//     } else {
+//       ws.send(JSON.stringify({ type: 'error', message: 'No order book data available' }));
+//     }
+//   } catch (err) {
+//     console.error('Redis get error:', err);
+//   }
+// };
+
 // Send the initial 100 asks and bids for orderbook data
 const sendInitialData = async (ws, symbol, channel) => {
   try {
     const redisKey = `${symbol}_${channel}`;
-    const redisData = await redisClient.get(redisKey);
+    // Fetch the most recent 100 records (0 to 99 range) from the Redis list
+    const redisData = await redisClient.lRange(redisKey, 0, 99);
 
-    if (redisData) {
-      const parsedData = JSON.parse(redisData);
-      console.log("redis data ", parsedData)
+    if (redisData.length > 0) {
+      // Parse the data from Redis
+      const parsedData = redisData.map(item => JSON.parse(item)); // Parse each list item
+      console.log("Redis data for order book:", parsedData);
 
+      // Send the parsed data back to the WebSocket client
       ws.send(JSON.stringify({
-        symbol:parsedData.symbol,
-        data:parsedData.data,
-        type: parsedData.type
+        symbol: symbol,
+        data: parsedData,
+        type: channel
       }));
 
       console.log(`Sent initial 100 asks and bids for ${symbol} (${channel})`);
@@ -77,7 +105,7 @@ const sendInitialData = async (ws, symbol, channel) => {
       ws.send(JSON.stringify({ type: 'error', message: 'No order book data available' }));
     }
   } catch (err) {
-    console.error('Redis get error:', err);
+    console.error('Redis LRANGE error:', err);
   }
 };
 

@@ -153,17 +153,48 @@ const server = http.createServer(app);
 createWebSocketServer(server, websocketPort);
 
 // Handle data storage and broadcasting
+// const handleData = async (data, symbol, streamType) => {
+//   try {
+//     var jsonData = JSON.stringify(data);
+//     await redisClient.set(`${symbol}_${streamType}`, jsonData);
+//     console.log(`Stored data in Redis for ${symbol} for (${streamType})`);
+//   } catch (err) {
+//     console.error('Redis set error:', err);
+//   }
+
+//   broadcastData(symbol, streamType, data); // Call the broadcast function from webSocketHandler.js
+// };
+
 const handleData = async (data, symbol, streamType) => {
   try {
-    var jsonData = JSON.stringify(data);
-    await redisClient.set(`${symbol}_${streamType}`, jsonData);
-    console.log(`Stored data in Redis for ${symbol} for (${streamType})`);
+    const redisKey = `${symbol}_${streamType}`;
+    const jsonData = JSON.stringify(data);
+
+    if (streamType === 'depth' || streamType === 'deals') {
+      // Append the data to a list to accumulate data over time
+      await redisClient.lPush(redisKey, jsonData);
+      console.log(`Appended data to Redis list for ${symbol} (${streamType})`);
+      // Trim the list to the latest 100 entries
+      await redisClient.lTrim(redisKey, 0, 99);
+      console.log(`Trimmed list for ${symbol} (${streamType}) to keep only the last 100 entries`);
+
+    } else if (streamType.includes('kline')) {
+      await redisClient.lPush(redisKey, jsonData);
+
+    } else if (streamType === '24hrTicker') {
+      // For ticker, just set the latest value (overwrite)
+      await redisClient.set(redisKey, jsonData);
+      console.log(`Stored latest data in Redis for ${symbol} (${streamType})`);
+    }
+
   } catch (err) {
-    console.error('Redis set error:', err);
+    console.error('Redis error:', err);
   }
 
-  broadcastData(symbol, streamType, data); // Call the broadcast function from webSocketHandler.js
+  // Broadcast the data to WebSocket clients
+  broadcastData(symbol, streamType, data);
 };
+
 
 // Dynamically initialize WebSocket connections based on bot configuration
 botsConfig.forEach(({ symbol, source }) => {
