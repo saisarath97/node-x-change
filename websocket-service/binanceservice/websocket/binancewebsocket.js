@@ -3,7 +3,7 @@
 const WebSocket = require('ws');
 const { streamTypes } = require('../binanceconfig.js');
 const formatResponse = require('../mappedresponses/formatresponse.js');
-const BinanceRestApi = require('../binaceapi/binanceRestApi.js')
+const BinanceRestApi = require('../binanceapi/binanceRestApi.js')
 
 const connectToStream = (symbol, stream, handleData) => {
   const ws = new WebSocket(stream.url.replace('{symbol}', symbol.toLowerCase().replace('_', '')));

@@ -11,11 +11,17 @@ const createWebSocketServer = (server, websocketPort) => {
   wss.on('connection', (ws) => {
     clients.set(ws, new Set());
     ws.send('Welcome to new websocket server');
-    
+    let data;
     ws.on('message', (message) => {
-      const data = JSON.parse(message);
+      try{
+      data = JSON.parse(message);
       handleSubscribe(ws, data);
       console.log(`Request from connection ${message}`);
+      } catch(err) {
+        console.error('Invalid JSON received:', data);
+        console.error('Error parsing JSON:', err.message);
+        ws.send('Bad request or json ');
+      }
     });
     
     ws.on('close', () => {

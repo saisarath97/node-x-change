@@ -1,4 +1,4 @@
-const { getOrderBook } = require('../binaceapi/binanceApiService');
+const { getOrderBook } = require('./binanceApiService');
 
 
 
