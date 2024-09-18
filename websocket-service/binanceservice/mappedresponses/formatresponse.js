@@ -1,5 +1,7 @@
 // formatresponse.js
 
+const StreamType  = require('../../appConfig/enum.js');
+
 /**
  * Maps Binance WebSocket order book data to the standard format.
  * @param {Object} data - The WebSocket message data from Binance.
@@ -117,14 +119,14 @@ const mapToOrderBook = (data, symbol, type) => {
    */
   const formatResponse = (data, symbol, type) => {
     switch (type) {
-      case 'depth':
+      case StreamType.DEPTH:
         return mapToOrderBook(data, symbol, type);
-      case 'ticker':
+      case StreamType.TICKER:
         return mapTickerData(data, symbol, type);
-      case 'deals':
+      case StreamType.DEALS:
         return mapDealsData(data, symbol, type);
       default:
-        if (type.startsWith('kline_')) {
+        if (type.startsWith(StreamType.KLINE)) {
           return mapToStandardKlineFormat(data, symbol, type);
         }
         return null;

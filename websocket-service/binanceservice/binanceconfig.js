@@ -1,4 +1,5 @@
 // src/binanceConfig.js
+const StreamType  = require('../appConfig/enum.js');
 
 const baseUrl = 'wss://stream.binance.com:9443';
 const binanceApiUrl = 'https://api.binance.com';
@@ -10,9 +11,9 @@ const klineIntervals = [
 ];
 
 const streamTypes = [
-  { type: 'depth', url: `${baseUrl}/ws/{symbol}@depth20@1000ms` },
-  { type: 'ticker', url: `${baseUrl}/ws/{symbol}@ticker` },
-  { type: 'deals', url: `${baseUrl}/ws/{symbol}@aggTrade`}
+  { type: StreamType.DEPTH , url: `${baseUrl}/ws/{symbol}@depth20@1000ms` },
+  { type: StreamType.TICKER, url: `${baseUrl}/ws/{symbol}@ticker` },
+  { type: StreamType.DEALS, url: `${baseUrl}/ws/{symbol}@aggTrade`}
   // Additional streams can be added here
 ];
 

@@ -74,7 +74,7 @@ const sendInitialData = async (ws, symbol, channel) => {
 
       console.log(`Sent initial 100 asks and bids for ${symbol} (${channel})`);
     } else {
-      ws.send(JSON.stringify({ type: 'error', message: 'No order book data available' }));
+      ws.send(JSON.stringify({ type: 'error', message: 'No data available in redis' }));
     }
   } catch (err) {
     console.error('Redis get error:', err);

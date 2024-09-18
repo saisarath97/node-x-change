@@ -136,6 +136,7 @@ const { redisClient } = require('./utils/redisClient.js');
 const BinanceWebSocket = require('./binanceservice/websocket/binancewebsocket.js');
 const WazirxWebSocket = require('./wazirxservice/websocket/wazirxwebsocket.js');
 const botsConfig = require('./appConfig/botconfigs.json');
+const StreamType  = require('./appConfig/enum.js');
 
 const app = express();
 const port = 3001;
@@ -157,12 +158,12 @@ const handleData = async (data, symbol, streamType) => {
   try {
     var jsonData = JSON.stringify(data);
 
-    if(streamType.includes('depth')){
-      handleOrderBookData(data);
-    } else if(streamType.includes('deals')){
-      handleMarketHistoryData(data);
-    } else if(streamType.includes('kline')) {
-      handleKlineData(data);
+    if(streamType.includes(StreamType.DEPTH)){
+      await handleOrderBookData(data);
+    } else if(streamType.includes(StreamType.DEALS)){
+      await handleMarketHistoryData(data);
+    } else if(streamType.includes(StreamType.KLINE)) {
+      await handleKlineData(data);
     }
     await redisClient.set(`${symbol}_${streamType}`, jsonData);
     console.log(`Stored data in Redis for ${symbol} for (${streamType})`);
@@ -186,7 +187,9 @@ const handleOrderBookData = async (data) => {
       data: {
         bids: [],
         asks: []
-      }
+      },
+      symbol:data.symbol,
+      type:data.type
     };
 
     // If existing data exists, parse it
@@ -224,15 +227,19 @@ const handleMarketHistoryData = async (data) => {
 
     // Retrieve the existing data from Redis
     const existingData = await redisClient.get(key);
-
     // Initialize the market history object
     let marketHistory = {
-      data: []
+      data: [],
+      symbol:data.symbol,
+      type:data.type
     };
-
     // If existing data exists, parse it
     if (existingData) {
       marketHistory = JSON.parse(existingData);
+      // Ensure 'data' is an array, even if existing data was malformed
+      if (!Array.isArray(marketHistory.data)) {
+        marketHistory.data = [];
+      }
     }
 
     // Add the new data to the existing array
@@ -262,7 +269,9 @@ const handleKlineData = async (data) => {
 
     // Initialize the kline history object
     let klineHistory = {
-      data: []
+      data: [],
+      symbol:data.symbol,
+      type:data.type
     };
 
     // If existing data exists, parse it
@@ -285,7 +294,7 @@ const handleKlineData = async (data) => {
     const jsonData = JSON.stringify(klineHistory);
     await redisClient.set(key, jsonData);
 
-    console.log(`Updated kline data for ${data.symbol} (${data.type}) stored in Redis with max 100 entries`);
+    console.log(`Updated kline data for ${data.symbol} (${data.type}) stored in Redis with max 200 entries`);
   } catch (err) {
     console.error("Error in storing kline data to Redis:", err.message);
   }

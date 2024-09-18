@@ -4,6 +4,7 @@ const WebSocket = require('ws');
 const { streamTypes } = require('../binanceconfig.js');
 const formatResponse = require('../mappedresponses/formatresponse.js');
 const BinanceRestApi = require('../binanceapi/binanceRestApi.js')
+const StreamType  = require('../../appConfig/enum.js');
 
 const connectToStream = (symbol, stream, handleData) => {
   const ws = new WebSocket(stream.url.replace('{symbol}', symbol.toLowerCase().replace('_', '')));
@@ -43,7 +44,7 @@ const startPingPong = (ws) => {
 
 const BinanceWebSocket = (symbol, handleData) => {
   streamTypes.forEach((stream) => {
-    if(stream.type == 'depth'){
+    if(stream.type == StreamType.DEPTH){
       BinanceRestApi(symbol, handleData)
     }
     connectToStream(symbol, stream, handleData);
